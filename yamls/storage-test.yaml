@@ -1,20 +1,29 @@
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: test-pod
+  name: test-deployment
 spec:
-  containers:
-  - name: test-container
-    image: busybox
-    command: ["/bin/sh", "-c", "while true; do echo $(date) >> /mnt/blob/testfile; sleep 5; done"]
-    resources:
-      limits:
-        cpu: "0.5"
-        memory: "256Mi"
-    volumeMounts:
-    - mountPath: /mnt/blob
-      name: blob-storage
-  volumes:
-  - name: blob-storage
-    persistentVolumeClaim:
-      claimName: sathesis-pvc
+  replicas: 3
+  selector:
+    matchLabels:
+      app: test-app
+  template:
+    metadata:
+      labels:
+        app: test-app
+    spec:
+      containers:
+      - name: test-container
+        image: busybox
+        command: ["/bin/sh", "-c", "while true; do dd if=/dev/urandom of=/mnt/blob/testfile bs=1M count=10 >> /mnt/blob/testfile; sleep 1; done"]
+        resources:
+          limits:
+            cpu: "0.3"
+            memory: "256Mi"
+        volumeMounts:
+        - mountPath: /mnt/blob
+          name: blob-storage
+      volumes:
+      - name: blob-storage
+        persistentVolumeClaim:
+          claimName: sathesis-pvc
