@@ -19,23 +19,50 @@ resource "random_pet" "azurerm_kubernetes_cluster_dns_prefix" {
     prefix   = "dns"
 }
 
+#not unique 0.3% chacne of collison (for 3)
+resource "random_integer" "vnet_netnum" {
+    for_each = toset(var.regions)
+    min      = 0
+    max      = 254  # Adjust this value based on the number of unique VNet numbers you need (should be greater then number of regions)
+}
+#not unique 0.3% chance of collison (for 3)
+resource "random_integer" "subnet_netnum" {
+    for_each = toset(var.regions)
+    min      = 0
+    max      = 254  # Adjust this value based on the number of unique subnet numbers you need
+}
+
 # Define the virtual network
 resource "azurerm_virtual_network" "az_vnet" {
     for_each            = toset(var.regions)
-    name                = var.vnet_name
+    name                = "${var.vnet_name}-${each.key}"
     location            = each.key
     resource_group_name = azurerm_resource_group.rg[each.key].name
-    address_space       = var.address_space
+    address_space       = ["10.${random_integer.vnet_netnum[each.key].result}.0.0/16"]
 }
 
-# Define the subnet
-resource "azurerm_subnet" "az_subnet" {
+# Define the subnet for Microsoft.Storage.Global
+resource "azurerm_subnet" "az_subnet_storage_global" {
     for_each             = toset(var.regions)
-    name                 = var.subnet_name
+    name                 = "${var.subnet_name}-storage-global-${each.key}"
     resource_group_name  = azurerm_resource_group.rg[each.key].name
     virtual_network_name = azurerm_virtual_network.az_vnet[each.key].name
-    address_prefixes     = var.subnet_address_prefix
-    service_endpoints    = var.service_endpoints
+    address_prefixes     = ["10.${random_integer.vnet_netnum[each.key].result }.${random_integer.subnet_netnum[each.key].result + 1}.0/24"]
+    service_endpoints    = ["Microsoft.Storage.Global"]
+}
+
+
+resource "azurerm_virtual_network_peering" "vnet_peering" {
+    for_each = { for k, v in local.vnet_peering_pairs : "${k}" => v }
+
+    name                       = "peer-${each.value.source}-${each.value.target}"
+    resource_group_name        = azurerm_resource_group.rg[each.value.source].name
+    virtual_network_name       = azurerm_virtual_network.az_vnet[each.value.source].name
+    remote_virtual_network_id  = azurerm_virtual_network.az_vnet[each.value.target].id
+    allow_virtual_network_access = true
+    allow_forwarded_traffic    = true
+    allow_gateway_transit      = false
+    use_remote_gateways        = false
 }
 
 resource "azurerm_kubernetes_cluster" "k8s" {
@@ -53,7 +80,7 @@ resource "azurerm_kubernetes_cluster" "k8s" {
         name            = "agentpool"
         vm_size         = "Standard_B2ms"
         node_count      = var.node_count
-        vnet_subnet_id  = azurerm_subnet.az_subnet[each.key].id
+        vnet_subnet_id  = azurerm_subnet.az_subnet_storage_global[each.key].id
     }
 
     linux_profile {
@@ -67,6 +94,8 @@ resource "azurerm_kubernetes_cluster" "k8s" {
     network_profile {
         network_plugin    = "kubenet"
         load_balancer_sku = "standard"
+        service_cidr      = "10.${random_integer.vnet_netnum[each.key].result + 1}.0.0/16"  # Adding 1 to avoid overlap
+        dns_service_ip    = "10.${random_integer.vnet_netnum[each.key].result + 1}.0.10"
     }
 
     storage_profile {
@@ -104,7 +133,7 @@ resource "azurerm_storage_account" "storage" {
         default_action             = "Deny"
         bypass                     = ["AzureServices"]
         ip_rules                   = [data.http.my_ip.body]  # Allow access from pc's IP
-        virtual_network_subnet_ids = [azurerm_subnet.az_subnet[each.key].id]  # Allow access from AKS subnet
+        virtual_network_subnet_ids = [azurerm_subnet.az_subnet_storage_global[each.key].id]  # Allow access from AKS subnet
     }
 }
 

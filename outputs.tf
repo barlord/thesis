@@ -41,6 +41,6 @@ output "kube_config" {
   sensitive = true
 }
 
-output "aks_subnet_id" {
-  value = { for k, v in azurerm_subnet.az_subnet : k => v.id }
+output "aks_subnet_id_local" {
+  value = { for k, v in azurerm_subnet.az_subnet_storage_global : k => v.id }
 }

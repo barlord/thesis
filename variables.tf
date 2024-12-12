@@ -3,6 +3,16 @@ variable "regions" {
   type        = list(string)
   default     = ["spaincentral", "westeurope", "centralindia"]
 }
+locals {
+  vnet_peering_pairs = [
+    { source = "spaincentral", target = "westeurope" },
+    { source = "spaincentral", target = "centralindia" },
+    { source = "westeurope", target = "centralindia" },
+    { source = "westeurope", target = "spaincentral" },
+    { source = "centralindia", target = "spaincentral" },
+    { source = "centralindia", target = "westeurope" }
+  ]
+}
 
 variable "resource_group_name_prefix" {
   type        = string
@@ -57,4 +67,15 @@ variable "address_space" {
   description = "The address space that is used by the virtual network."
   type        = list(string)
   default     = ["10.1.0.0/16"]
+}
+variable "base_cidr" {
+  description = "The base CIDR block for the virtual network"
+  type        = string
+  default     = "10.1.1.0/24"
+}
+
+variable "subnet_prefix_length" {
+  description = "The prefix length for the subnets"
+  type        = number
+  default     = 24
 }

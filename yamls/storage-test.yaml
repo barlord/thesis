@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: test-deployment
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: test-app
@@ -15,11 +15,18 @@ spec:
       containers:
       - name: test-container
         image: busybox
-        command: ["/bin/sh", "-c", "while true; do dd if=/dev/urandom of=/mnt/blob/testfile bs=1M count=10 >> /mnt/blob/testfile; sleep 1; done"]
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+           wget -O /mnt/blob/bbb_sunflower_2160p_30fps_stereo_abl.mp4.zip https://download.blender.org/demo/movies/BBB/bbb_sunflower_2160p_30fps_stereo_abl.mp4.zip
+           for i in $(seq 8 200); do
+             cp /mnt/blob/bbb_sunflower_2160p_30fps_stereo_abl.mp4.zip /mnt/blob/bbb_sunflower_2160p_30fps_stereo_abl_$i.mp4.zip
+             echo "bbb_sunflower_2160p_30fps_stereo_abl_$i.mp4.zip saved"
+           done
         resources:
-          limits:
-            cpu: "0.3"
-            memory: "256Mi"
+          #limits:
+            #cpu: "1"
+            #memory: "4Gi"
         volumeMounts:
         - mountPath: /mnt/blob
           name: blob-storage

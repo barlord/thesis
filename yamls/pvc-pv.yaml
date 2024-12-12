@@ -15,8 +15,8 @@ spec:
     # Important: in the storage account the "Enable network file system v3" should be picked by creation
     volumeHandle: sathesis-rg-thesis-superb-weevil-testblob
     volumeAttributes:
-      resourceGroup: rg-thesis-superb-weevil
-      storageAccount: sathesisspain
+      resourceGroup: rg-thesis-westeurope-tough-iguana #needs to ba changed for every iteration
+      storageAccount: sathesiswesteurope #needs to ba changed for every region
       containerName: testblob
       protocol: nfs
 
